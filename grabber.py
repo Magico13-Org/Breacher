@@ -13,7 +13,7 @@ from breacher import Breacher
 
 code_images = {}
 
-def build_source_contours():
+def build_source_codes():
     '''Reads in the code images to build their contours for comparing to later'''
     global code_images
     images = {} # clear it out just in case
@@ -143,17 +143,17 @@ def overlay_result(img, sequence, box_positions):
 
         second_seq = box_positions[sequence[i+1][0]][sequence[i+1][1]]
         second = (second_seq[0] + int(second_seq[2]/2), second_seq[1] + int(second_seq[3]/2))
-        cv2.arrowedLine(img, first, second, (255, 255, 255), 2)
+        cv2.arrowedLine(img, first, second, (0, 255, 255), 2)
 
 
 if __name__ == "__main__":
-    # filename = 'example2_5g_8b_1.3.png'
-    # filename = 'example4_6g_8b_3.4.png'
-    filename = 'example1_6g_8b_1.4.png'
+    # filename = 'examples/example2_5g_8b_1.3.png'
+    filename = 'examples/example4_6g_8b_3.4.png'
+    # filename = 'examples/example1_6g_8b_1.4.png'
 
     timer_overall = time.perf_counter()
 
-    build_source_contours()
+    build_source_codes()
 
     img = cv2.imread(filename)
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -176,13 +176,14 @@ if __name__ == "__main__":
     breach = Breacher()
     breach.set_grid(grid)
     breach.set_targets([
-        # ['BD', 'BD'],
-        # ['1C', '1C', 'BD'],
-        # ['BD', 'BD', '1C', '55']
-        ['1C', '55', '55', 'BD']
+        ['BD', 'BD'],
+        ['1C', '1C', 'BD'],
+        ['BD', 'BD', '1C', '55']
+        #['7A', '1C', '55', '55', 'BD']
+        # ['55', '55', '55']
     ], 8)
 
-    seq, score = breach.solve()
+    seq, score = breach.solve(shortest=True)
     seq_txt = breach.positions_to_text(seq)
     print('"Best" option:', seq, seq_txt, score)
 
@@ -197,6 +198,7 @@ if __name__ == "__main__":
     elapsed_solve = round(timer_solve - timer_extract_matrix, 2)
 
     print('Timing {0}s overall. {1}s find matrix, {2}s matrix extract, {3}s solve.'.format(elapsed_overall, elapsed_cv_matrix, elapsed_extract_matrix, elapsed_solve))
+    print('Examined {0} possibilities with {1} valid solutions found.'.format(breach.total_tested, breach.total_solutions))
 
     cv2.imshow('img', img)
     # cv2.imshow('img_gray', img_gray)
