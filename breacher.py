@@ -130,7 +130,7 @@ class Breacher(object):
             self.total_tested += 1
             if current_value >= self.max_value: 
                 self.total_solutions += 1
-                print(' '.join(self.positions_to_text(buffer)), buffer)
+                #print(' '.join(self.positions_to_text(buffer)), buffer)
             return buffer, current_value # we currently build the buffer up after we've reached the max
             # instead we should build it up the other way, then we can short out when we hit the target(s) in less codes
         options = []
