@@ -12,7 +12,7 @@ from skimage.metrics import structural_similarity
 from breacher import Breacher
 
 def build_source_codes():
-    '''Reads in the code images to build their contours for comparing to later'''
+    '''Reads in the code images for later compariosn'''
     images = {} # clear it out just in case
     codes = ['1C', '7A', '55', 'BD', 'E9']
 
@@ -22,30 +22,8 @@ def build_source_codes():
     
     return images
 
-
-def massage_data(raw_data):
-    '''Takes the raw snippets and remaps to the expected values, in-place'''
-    for i in range(len(raw_data)):
-        raw = raw_data[i]
-        #only expected values are 1C, 7A, E9, BD, 55
-        l = len(raw)
-        if l == 0:
-            print('No text data for item {0}, cannot massage.'.format(i))
-        elif l == 1:
-            #try to massage
-            if raw == '1' or raw == 'C': raw_data[i] = '1C'
-            elif raw == '7' or raw =='A': raw_data[i] = '7A'
-            elif raw == 'E' or raw =='9': raw_data[i] = 'E9'
-            elif raw == 'B' or raw =='D': raw_data[i] = 'BD'
-            elif raw == '5': raw_data[i] = '55'
-        elif l == 2:
-            #verify?
-            continue
-        else:
-            print('Invalid text data "{0}" at index {1}'.format(raw, i))
-
 def determine_code(region, code_images, extra_pad = 0):
-    '''Determine which code is in the provided region by comparing images'''
+    '''Determine which code is in the provided region by comparing images. Optional extra padding around the region, taking the resizing into account'''
     closest_code = None
     closest_score = -1
     for code in code_images: #infinitely faster than doing OCR with tesseract (<0.1s vs 5s)
@@ -54,11 +32,9 @@ def determine_code(region, code_images, extra_pad = 0):
         if extra_pad != 0:
             region_resized = cv2.copyMakeBorder(region_resized, extra_pad, extra_pad, extra_pad, extra_pad, cv2.BORDER_CONSTANT, value=(255, 255, 255))
         (score, _) = structural_similarity(region_resized, code_im, full=True)
-        # diff = (diff * 255).astype("uint8")
         if score > closest_score:
             closest_score = score
             closest_code = code
-    # cv2.imshow("diff_{0}_{1}".format(closest_code, random.randint(0, 10000)), diff)
     return closest_code
     
 
@@ -88,23 +64,16 @@ def find_code_matrix(img_thresh, img=None):
 
 def extract_grid(grid_box, grid_bounds, code_images, img=None):
     '''Extract the code snippets from the (thresholded) region of interest. Original image just used for tagging.'''
-    
+    pad = 5
     #find the code regions by making the codes a blob then finding those contours
     grid_box_copy = cv2.morphologyEx(grid_box, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13,13)));
-
-    # cv2.imshow('gbc', grid_box_copy)
-    # cv2.waitKey(1)
-
     cnts = cv2.findContours(grid_box_copy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
     grid_raw = []
-    # regions_raw = []
     grid_boxes = []
-    pad = 5
-    # i = 0
     for c in cnts: #starts in bottom right, goes right to left
         (x, y, w, h) = cv2.boundingRect(c)
-        # grab the number region, pad it, ocr it
+        # grab the number region, pad it, compare it
         region = grid_box[y-pad:y+h+pad, x-pad:x+w+pad]
         region = cv2.bitwise_not(region)
         if region is None: continue
@@ -119,17 +88,12 @@ def extract_grid(grid_box, grid_bounds, code_images, img=None):
             cv2.rectangle(img, (x-pad, y-pad), (x+w+pad, y+h+pad), (255, 255, 0), 2) #display a box around it
     grid_raw.reverse()
     grid_boxes.reverse()
-    # regions_raw.reverse()
-    # for i in range(len(regions_raw)):
-    #     cv2.imshow('region_{0}'.format(i), regions_raw[i])
-    # massage_data(grid_raw) # not needed with image comparison vs OCR
     
     grid_size = math.sqrt(len(grid_raw))
     if math.floor(grid_size) != math.ceil(grid_size):
         print('Warning! Invalid data, non-square grid detected.')
     grid_size = round(grid_size)
     print('Found {0} items in grid. Grid size {1}'.format(len(grid_raw), grid_size))
-    # print(grid_raw)
     grid_square = []
     grid_boxes_square = []
     for i in range(grid_size):
@@ -140,17 +104,14 @@ def extract_grid(grid_box, grid_bounds, code_images, img=None):
             row_boxes.append(grid_boxes[i*grid_size + j])
         grid_square.append(row)
         grid_boxes_square.append(row_boxes)
-
-    # cv2.imshow('grid_box', grid_box)
     return grid_square, grid_boxes_square
 
 def extract_targets(img_thresh, code_images, img=None):
-    roi_bounds = [(int(img_thresh.shape[1]*0.4), (int(img_thresh.shape[1]*0.65))), (int(img_thresh.shape[0]*0.3), int(img_thresh.shape[0]*0.75))] # this is in width, height
-    roi = img_thresh[roi_bounds[1][0]:roi_bounds[1][1], roi_bounds[0][0]:roi_bounds[0][1]]
-
     pad = 5
     targets = []
-
+    
+    roi_bounds = [(int(img_thresh.shape[1]*0.4), (int(img_thresh.shape[1]*0.65))), (int(img_thresh.shape[0]*0.3), int(img_thresh.shape[0]*0.75))] # this is in width, height
+    roi = img_thresh[roi_bounds[1][0]:roi_bounds[1][1], roi_bounds[0][0]:roi_bounds[0][1]]
     roi_closed = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13,13)));
     cnts = cv2.findContours(roi_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
@@ -169,22 +130,12 @@ def extract_targets(img_thresh, code_images, img=None):
                 cur_y = y
             region = roi[y:y+h, x:x+w]
             region = cv2.bitwise_not(region)
-
             text = determine_code(region, code_images, pad)
-
             current_row.append(text)
-            # cv2.imshow('region_{0}_{1}'.format(text, random.randint(0, 10000)), region)
-            # cv2.waitKey()
             x += roi_bounds[0][0]
             y += roi_bounds[1][0]
-            #grid_boxes.append((x, y, w, h)) #in original image coordinates, not roi coords
             if img is not None:
                 cv2.rectangle(img, (x-pad, y-pad), (x+w+pad, y+h+pad), (255, 255, 0), 2) #display a box around it
-        # else:
-        #     x += roi_bounds[0][0]
-        #     y += roi_bounds[1][0]
-        #     if img is not None:
-        #         cv2.rectangle(img, (x-pad, y-pad), (x+w+pad, y+h+pad), (0, 255, 255), 2) #display a box around it
     if current_row:
         current_row.reverse()
         targets.append(current_row)
@@ -213,22 +164,15 @@ def find_buffer_region(img_thresh, img=None):
             if img is not None:        
                 cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2) #display a box around it
             break
-
-
-    # cv2.imshow('roi', roi)
     return buffer_bounds
 
 def extract_buffer(img_gray, buffer_bounds, img=None):
     '''Determines the buffer size. Takes the gray image, not the thresholded one (we re-threshold just the region)'''
     buffer_size = 0
     pad = 5
-    
-    roi = img_gray[buffer_bounds[1]+pad:buffer_bounds[1]+buffer_bounds[3]-pad, buffer_bounds[0]+pad:buffer_bounds[0]+buffer_bounds[2]-pad]
-
-    roi = cv2.threshold(roi, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1] # we threshold just the buffer region
-    #roi_closed = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13,13)));
-    
     verticals = 0
+    roi = img_gray[buffer_bounds[1]+pad:buffer_bounds[1]+buffer_bounds[3]-pad, buffer_bounds[0]+pad:buffer_bounds[0]+buffer_bounds[2]-pad]
+    roi = cv2.threshold(roi, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1] # we threshold just the buffer region
 
     cnts = cv2.findContours(roi, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
@@ -242,7 +186,6 @@ def extract_buffer(img_gray, buffer_bounds, img=None):
                 y += buffer_bounds[1]+pad
                 cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 255), 2) #display a box around it
 
-    # cv2.imshow('roi_extract', roi)
     buffer_size = math.ceil(verticals / 2) #two verticals per buffer block
     return buffer_size
 
@@ -301,15 +244,6 @@ def full_process(img, calculate_shortest=False, show_debug_markers=False):
     print('Solution:', seq, seq_txt, score)
     print('Examined {0} possibilities with {1} valid solutions found.'.format(breach.total_tested, breach.total_solutions))
 
-    # timer_solve_fast = time.perf_counter()
-
-    # seqb, scoreb = breach.solve(shortest=True)
-    # seq_txtb = breach.positions_to_text(seqb)
-    # overlay_result(img, seqb, boxes, (255, 255, 255), 5, 5)
-    
-    # print('"Best" option:', seqb, seq_txtb, scoreb)
-    # print('Examined {0} possibilities with {1} valid solutions found.'.format(breach.total_tested, breach.total_solutions))
-
     timer_solve = time.perf_counter()
 
     elapsed_overall = round(time.perf_counter() - timer_overall, 2)
@@ -325,17 +259,16 @@ def full_process(img, calculate_shortest=False, show_debug_markers=False):
 
     return seq, seq_txt
 
-    
 
 if __name__ == "__main__":
-    # filename = 'examples/example1_6g_8b_1.4.png'
+    filename = 'examples/example1_6g_8b_1.4.png'
     # filename = 'examples/example2_5g_8b_1.3.png'
     # filename = 'examples/example3_6g_8b_3.4.png'
     # filename = 'examples/example4_6g_8b_3.4.png'
     # filename = 'examples/example5_5g_4b_3.3_downloaded.jpg'
     # filename = 'examples/example6_1440.png'
     # filename = 'examples/example7.png'
-    filename = 'examples/example11.png'
+    # filename = 'examples/example11.png'
     
     img = cv2.imread(filename)
     sequence, text = full_process(img, calculate_shortest=False, show_debug_markers=False)

@@ -65,56 +65,13 @@ class Breacher(object):
 
         #start in the top row, alternate between rows/columns, build up the best scoring sequence (breadth first basically), to a depth equal to the buffer size
         #score goes up 0 if not a useful choice, 0.1 if it gets closer to completing a target, and 2^target position for completing a target
-        if shortest:
-            buffer, score = self._solve_step_shortest(remaining_grid, buffer, 0, 0, False, 0)
-        else:
-            buffer, score = self._solve_step_fast(remaining_grid, buffer, 0, 0, False, 0)
+        buffer, score = self._solve_step(remaining_grid, buffer, 0, 0, False, 0, not shortest)
+        if self.total_solutions == 0:
+            print('No valid solutions!')
+            return [], 0.0
         return buffer, score
 
-    def _solve_step_fast(self, remaining, buffer, x, y, isColumn, depth):
-        '''internal function for a step in solving'''
-        #x,y is the most recent choice. If isColumn then we're looking at items in the same column (same y), else in same row (same x)
-        buffer = copy.deepcopy(buffer)
-        remaining = copy.deepcopy(remaining)
-        if not (depth == 0 and x == 0 and y == 0 and not isColumn): #skip the very first one
-            #buffer.append(self.grid[x][y])
-            buffer.append((x, y))
-        current_value = self.get_value(buffer)
-        if depth >= self.buffer_size or current_value >= self.max_value:
-            self.total_tested += 1
-            if current_value >= self.max_value: self.total_solutions += 1
-            return buffer, current_value
-        options = []
-        if isColumn:
-            for xG in range(len(self.grid)):
-                options.append(remaining[xG][y])
-        else:
-            for yG in range(len(self.grid[0])):
-                options.append(remaining[x][yG])
-        # print(options)
-        # go through the options one by one
-        best_sequence = None
-        best_score = -1
-        for i in range(len(options)):
-            opt = options[i]
-            if opt == '': continue
-            value = 0
-            seq = None
-            new_pos = (x, i)
-            if isColumn: new_pos = (i, y)
-            remaining[new_pos[0]][new_pos[1]] = ''
-            seq, value = self._solve_step_fast(remaining, buffer, new_pos[0], new_pos[1], not isColumn, depth+1)
-            remaining[new_pos[0]][new_pos[1]] = opt
-
-            if value > best_score:
-                best_score = value
-                best_sequence = seq
-                if value >= self.max_value:
-                    break
-        #print(depth, best_sequence, best_score)
-        return best_sequence, best_score
-
-    def _solve_step_shortest(self, remaining, buffer, x, y, isColumn, depth):
+    def _solve_step(self, remaining, buffer, x, y, isColumn, depth, stop_on_first=False):
         '''internal function for a step in solving'''
         #x,y is the most recent choice. If isColumn then we're looking at items in the same column (same y), else in same row (same x)
         buffer = copy.deepcopy(buffer)
@@ -164,14 +121,15 @@ class Breacher(object):
             if isColumn: new_pos = (i, y)
 
             remaining[new_pos[0]][new_pos[1]] = ''
-            seq, value = self._solve_step_shortest(remaining, buffer, new_pos[0], new_pos[1], not isColumn, depth+1)
+            seq, value = self._solve_step(remaining, buffer, new_pos[0], new_pos[1], not isColumn, depth+1, stop_on_first)
             remaining[new_pos[0]][new_pos[1]] = opt
 
             if value > best_score:
                 best_score = value
                 best_sequence = seq
-                if value >= self.max_value and len(seq) == self.smallest_target:
-                    break
+                if value >= self.max_value:
+                    if stop_on_first or len(seq) == self.smallest_target:
+                        break
 
 
         #print(depth, best_sequence, best_score)
