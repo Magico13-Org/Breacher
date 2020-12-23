@@ -62,7 +62,7 @@ def determine_code(region, code_images, extra_pad = 0):
     return closest_code
     
 
-def find_code_matrix(img_thresh):
+def find_code_matrix(img_thresh, img=None):
     '''Finds the code matrix in the image, returns the roi and its bounds (x,y,w,h) within the source image'''
     roi_1_bounds = [(0, int(img_thresh.shape[1]/2)), (0, int(img_thresh.shape[0]*0.75))] # this is in width, height
     left_half = img_thresh[roi_1_bounds[1][0]:roi_1_bounds[1][1], roi_1_bounds[0][0]:roi_1_bounds[0][1]]
@@ -78,10 +78,10 @@ def find_code_matrix(img_thresh):
         x += roi_1_bounds[0][0]
         y += roi_1_bounds[1][0]
         if ratio > 1.3 and ratio < 1.5 and w > 400 and h > 300: #must be roughly 1.4 aspect ratio and minimum of 300 pixels
+            bounds = (x+10, y+int(h/8), w-20, h-10-int(h/8))
+            grid_box = img_thresh[bounds[1]:bounds[1]+bounds[3], bounds[0]:bounds[0]+bounds[2]]
             if img is not None:
-                cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0, 0), 2)
-            bounds = (x+10, y+50, w, h)
-            grid_box = img_thresh[bounds[1]:y+h-10, bounds[0]:x+w-10]
+                cv2.rectangle(img, (bounds[0], bounds[1]), (bounds[0]+bounds[2], bounds[1]+bounds[3]), (255, 0, 0), 2)
             break
 
     return grid_box, bounds
@@ -91,6 +91,10 @@ def extract_grid(grid_box, grid_bounds, code_images, img=None):
     
     #find the code regions by making the codes a blob then finding those contours
     grid_box_copy = cv2.morphologyEx(grid_box, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13,13)));
+
+    # cv2.imshow('gbc', grid_box_copy)
+    # cv2.waitKey(1)
+
     cnts = cv2.findContours(grid_box_copy, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
     grid_raw = []
@@ -103,6 +107,7 @@ def extract_grid(grid_box, grid_bounds, code_images, img=None):
         # grab the number region, pad it, ocr it
         region = grid_box[y-pad:y+h+pad, x-pad:x+w+pad]
         region = cv2.bitwise_not(region)
+        if region is None: continue
 
         text = determine_code(region, code_images)
 
@@ -253,35 +258,32 @@ def overlay_result(img, sequence, box_positions, color, offset_x=0, offset_y=0):
         cv2.arrowedLine(img, first, second, color, 2)
 
 
-if __name__ == "__main__":
-    # filename = 'examples/example1_6g_8b_1.4.png'
-    # filename = 'examples/example2_5g_8b_1.3.png'
-    filename = 'examples/example3_6g_8b_3.4.png'
-    # filename = 'examples/example4_6g_8b_3.4.png'
-    
-
+def full_process(img, calculate_shortest=False, show_debug_markers=False):
     timer_overall = time.perf_counter()
 
     code_images = build_source_codes()
 
-    img = cv2.imread(filename)
+    debug_image = None
+    if show_debug_markers: 
+        debug_image = img
+
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_thresh = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
 
-    grid_box, grid_bounds = find_code_matrix(img_thresh)
+    grid_box, grid_bounds = find_code_matrix(img_thresh, debug_image)
     if grid_box is None:
         print('Could not find grid...')
-        exit()
+        return None, None
 
-    targets = extract_targets(img_thresh, code_images, img)
+    targets = extract_targets(img_thresh, code_images, debug_image)
 
-    buffer_bounds = find_buffer_region(img_thresh, img)
-    buffer_size = extract_buffer(img_gray, buffer_bounds, img)
+    buffer_bounds = find_buffer_region(img_thresh, debug_image)
+    buffer_size = extract_buffer(img_gray, buffer_bounds, debug_image)
     print('Buffer is size {0}'.format(buffer_size))
 
     timer_cv_matrix = time.perf_counter()
 
-    grid, boxes = extract_grid(grid_box, grid_bounds, code_images, img)
+    grid, boxes = extract_grid(grid_box, grid_bounds, code_images, debug_image)
     if grid is not None:
         for row in grid:
             print(' '.join(row))
@@ -292,36 +294,56 @@ if __name__ == "__main__":
     breach.set_grid(grid)
     breach.set_targets(targets, buffer_size)
 
-    seq, score = breach.solve(shortest=False)
+    seq, score = breach.solve(shortest=calculate_shortest)
     seq_txt = breach.positions_to_text(seq)
     #overlay pattern on original image
     overlay_result(img, seq, boxes, (0, 255, 255))
-    print('"Fast" option:', seq, seq_txt, score)
+    print('Solution:', seq, seq_txt, score)
     print('Examined {0} possibilities with {1} valid solutions found.'.format(breach.total_tested, breach.total_solutions))
 
-    timer_solve_fast = time.perf_counter()
+    # timer_solve_fast = time.perf_counter()
 
-    seqb, scoreb = breach.solve(shortest=True)
-    seq_txtb = breach.positions_to_text(seqb)
-    overlay_result(img, seqb, boxes, (255, 255, 255), 5, 5)
+    # seqb, scoreb = breach.solve(shortest=True)
+    # seq_txtb = breach.positions_to_text(seqb)
+    # overlay_result(img, seqb, boxes, (255, 255, 255), 5, 5)
     
-    print('"Best" option:', seqb, seq_txtb, scoreb)
-    print('Examined {0} possibilities with {1} valid solutions found.'.format(breach.total_tested, breach.total_solutions))
+    # print('"Best" option:', seqb, seq_txtb, scoreb)
+    # print('Examined {0} possibilities with {1} valid solutions found.'.format(breach.total_tested, breach.total_solutions))
 
     timer_solve = time.perf_counter()
 
     elapsed_overall = round(time.perf_counter() - timer_overall, 2)
     elapsed_cv_matrix = round(timer_cv_matrix - timer_overall, 2)
     elapsed_extract_matrix = round(timer_extract_matrix - timer_cv_matrix, 2)
-    elapsed_solve_fast = round(timer_solve_fast - timer_extract_matrix, 2)
-    elapsed_solve = round(timer_solve - timer_solve_fast, 2)
+    elapsed_solve = round(timer_solve - timer_extract_matrix, 2)
 
-    print('Timing {0}s overall. {1}s find matrix, {2}s matrix extract, {3}s solve fast, {4}s solve best.'.format(elapsed_overall, elapsed_cv_matrix, elapsed_extract_matrix, elapsed_solve_fast, elapsed_solve))
+    print('Timing {0}s overall. {1}s find matrix, {2}s matrix extract, {3}s solve.'.format(elapsed_overall, elapsed_cv_matrix, elapsed_extract_matrix, elapsed_solve))
 
     matrix_roi = img[grid_bounds[1]:grid_bounds[1]+grid_bounds[3], 
                         grid_bounds[0]:grid_bounds[0]+grid_bounds[2]]
     cv2.imshow('matrix_final', matrix_roi)
-    cv2.imshow('img', img)
+
+    return seq, seq_txt
+
+    
+
+if __name__ == "__main__":
+    # filename = 'examples/example1_6g_8b_1.4.png'
+    # filename = 'examples/example2_5g_8b_1.3.png'
+    # filename = 'examples/example3_6g_8b_3.4.png'
+    # filename = 'examples/example4_6g_8b_3.4.png'
+    # filename = 'examples/example5_5g_4b_3.3_downloaded.jpg'
+    # filename = 'examples/example6_1440.png'
+    # filename = 'examples/example7.png'
+    filename = 'examples/example11.png'
+    
+    img = cv2.imread(filename)
+    sequence, text = full_process(img, calculate_shortest=False, show_debug_markers=False)
+
+    # matrix_roi = img[grid_bounds[1]:grid_bounds[1]+grid_bounds[3], 
+    #                     grid_bounds[0]:grid_bounds[0]+grid_bounds[2]]
+    # cv2.imshow('matrix_final', matrix_roi)
+    # cv2.imshow('img', img)
     # cv2.imshow('img_gray', img_gray)
     # cv2.imshow('img_thresh', img_thresh)
     # cv2.imshow('img_left', left_half)
