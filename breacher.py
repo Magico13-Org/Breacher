@@ -49,181 +49,78 @@ class Breacher(object):
             self.target_strs.append(''.join(str(s) for s in tgt))
             self.max_value += pow(2, i)
 
-    def solve(self, shortest=False):
+    def solve(self):
         '''Using the provided grid and targets, returns the best sequence (first) and score (second)'''
-        #sanity check
-        buffer = []
-        score = 0.0
-        remaining_grid = copy.deepcopy(self.grid)
         if self.buffer_size <= 0 or len(self.targets) == 0 or len(self.grid) == 0:
             print('Inavlid setup')
-            return buffer, score
-
-        self.total_tested = 0
-        self.total_solutions = 0
-        self.open_sequences = {}
-
-        #start in the top row, alternate between rows/columns, build up the best scoring sequence (breadth first basically), to a depth equal to the buffer size
-        #score goes up 0 if not a useful choice, 0.1 if it gets closer to completing a target, and 2^target position for completing a target
-        buffer, score = self._solve_step(remaining_grid, buffer, 0, 0, False, 0, not shortest)
-        if self.total_solutions == 0:
-            print('No valid solutions! Returning best solution found.')
-        return buffer, score
-
-    def _solve_step(self, remaining, buffer, x, y, isColumn, depth, stop_on_first=False):
-        '''internal function for a step in solving'''
-        #x,y is the most recent choice. If isColumn then we're looking at items in the same column (same y), else in same row (same x)
-        buffer = copy.deepcopy(buffer)
-        remaining = copy.deepcopy(remaining)
-        if not (depth == 0 and x == 0 and y == 0 and not isColumn): #skip the very first one
-            #buffer.append(self.grid[x][y])
-            buffer.append((x, y))
-
-        current_value = self.get_value(buffer)
-        if depth >= self.shortest_solution or current_value >= self.max_value:
-            if depth < self.shortest_solution:
-                self.shortest_solution = depth # if we find one that's 7 that matches all targets and our buffer is 8, stop checking for longer solutions
-            self.total_tested += 1
-            if current_value >= self.max_value: 
-                self.total_solutions += 1
-                #print(' '.join(self.positions_to_text(buffer)), buffer)
-            return buffer, current_value # we currently build the buffer up after we've reached the max
-            # instead we should build it up the other way, then we can short out when we hit the target(s) in less codes
-        options = []
-        if isColumn:
-            for xG in range(len(self.grid)):
-                options.append(remaining[xG][y])
-        else:
-            for yG in range(len(self.grid[0])):
-                options.append(remaining[x][yG])
-        # print(options)
-        # go through the options one by one, pick the one that ups the score the most
-        
-        sequences = {}
-        for i in range(len(options)):
-            opt = options[i]
-            if opt == '': continue
-            new_pos = (x, i)
-            if isColumn: new_pos = (i, y)
-            newbuf = copy.deepcopy(buffer)
-            newbuf.append(new_pos)
-            score = self.get_value(newbuf)
-            sequences[i] = score           
-
-        # we now have all the possible options and their scores, pick the best scoring one
-        best_sequence = None
-        best_score = -1
-        for kvp in sorted(sequences.items(), key=operator.itemgetter(1),reverse=True):
-            i = kvp[0]
-            opt = options[i]
-            new_pos = (x, i)
-            if isColumn: new_pos = (i, y)
-
-            remaining[new_pos[0]][new_pos[1]] = ''
-            seq, value = self._solve_step(remaining, buffer, new_pos[0], new_pos[1], not isColumn, depth+1, stop_on_first)
-            remaining[new_pos[0]][new_pos[1]] = opt
-
-            if value > best_score:
-                best_score = value
-                best_sequence = seq
-                if value >= self.max_value:
-                    if stop_on_first or len(seq) == self.smallest_target:
-                        break
-
-
-        #print(depth, best_sequence, best_score)
-        return best_sequence, best_score
-
-    def solve_v2(self):
-        buffer = []
-        score = 0.0
-        remaining_grid = copy.deepcopy(self.grid)
-        if self.buffer_size <= 0 or len(self.targets) == 0 or len(self.grid) == 0:
-            print('Inavlid setup')
-            return buffer, score
+            return [], 0.0
 
         self.total_tested = 0
         self.total_solutions = 0
         self.open_sequences = {}
         
-        found = False
+        best_sequence = []
+        best_score = 0.0
 
-        while not found:
+        searching = True
+
+        while searching:
             # pick the best scoring option from the list of open sequences
             # check the new options and add them to the open list
             # repeat until a solution is found
-            highest_score = 0 if not self.open_sequences else sorted(self.open_sequences.keys)[0]
-            seq = self.open_sequences.pop(highest_score, [])
-            if seq:
-                last = seq[:-1]
-            else:
-                last = (0,0)
-            options = self._build_options(remaining_grid, seq, last[0], last[1])
-            print(options)
+            highest_score = 0 if not self.open_sequences else sorted(self.open_sequences.keys(), reverse=True)[0]
+            seq = [] #if we're just starting out we have an empty sequence
+            if highest_score > 0:
+                sequences = self.open_sequences[highest_score] #grab the list of sequences with that score
+                seq = sequences.pop(0) #grab the first sequence in the list of sequences, it's the oldest
+                if not sequences: #list empty now, remove from the open_sequences
+                    del self.open_sequences[highest_score]
+                if not self.open_sequences:
+                    searching = False #we've run out out options
+            last = (0,0) #the last element in the sequence
+            if seq: last = seq[-1]
+            isColumn = (len(seq) % 2) == 1
+            remaining_grid = self._build_remaining_grid(self.grid, seq) #empty out all the elements that have been chosen in the sequence
+            options = self._build_options(remaining_grid, seq, last[0], last[1], isColumn) #get all the new options
+            # print(self.positions_to_text(seq))
+            for i in options: #loop over the options, get the value of the new sequence if we chose that one
+                new_pos = (last[0], i)
+                if isColumn: new_pos = (i, last[1])
+                new_seq = seq + [new_pos]
+                score = self.get_value(new_seq)
+                if score > best_score:
+                    best_score = score
+                    best_sequence = new_seq
+                if score >= self.max_value:
+                    self.total_tested += 1
+                    self.total_solutions += 1
+                    return new_seq, score
+                if len(new_seq) >= self.buffer_size:
+                    self.total_tested += 1
+                    continue #if it didn't succeed then we're out of buffer space
+                if score in self.open_sequences: self.open_sequences[score].append(new_seq)
+                else: self.open_sequences[score] = [new_seq] #add the new sequence and score to the open_sequences
+        #if we got here then we haven't found a perfect option
+        print('No valid solutions! Returning best solution found.')
+        return best_sequence, best_score
 
-    def _build_options(self, remaining, buffer, x, y):
-        isColumn = (len(buffer) % 2) == 1
+    def _build_options(self, remaining, buffer, x, y, isColumn):
         options = {}
         if isColumn:
             for xG in range(len(self.grid)):
-                options[xG] = remaining[xG][y]
+                if remaining[xG][y] != '':
+                    options[xG] = remaining[xG][y]
         else:
             for yG in range(len(self.grid[0])):
-                options[yG] = remaining[x][yG]
+                if remaining[x][yG] != '':
+                    options[yG] = remaining[x][yG]
         return options
 
-
-    # def _solve_step_shortest2(self, remaining, buffer, x, y, isColumn, depth):
-    #     '''internal function for a step in solving'''
-    #     #x,y is the most recent choice. If isColumn then we're looking at items in the same column (same y), else in same row (same x)
-    #     buffer = copy.deepcopy(buffer)
-    #     remaining = copy.deepcopy(remaining)
-    #     if not (depth == 0 and x == 0 and y == 0 and not isColumn): #skip the very first one
-    #         #buffer.append(self.grid[x][y])
-    #         buffer.append((x, y))
-
-    #     options = []
-    #     if isColumn:
-    #         for xG in range(len(self.grid)):
-    #             options.append(remaining[xG][y])
-    #     else:
-    #         for yG in range(len(self.grid[0])):
-    #             options.append(remaining[x][yG])
-        
-    #     for i in range(len(options)):
-    #         opt = options[i]
-    #         if opt == '': continue
-    #         new_pos = (x, i)
-    #         if isColumn: new_pos = (i, y)
-            
-    #         newbuf = copy.deepcopy(buffer)
-    #         newbuf.append(new_pos)
-
-    #         score = self.get_value(newbuf)
-    #         self.open_sequences.append(_sequence(newbuf, score))
-
-    #     # we now have all the possible options and their scores, pick the best scoring one
-    #     best_sequence = None
-    #     best_score = -1
-    #     for kvp in sorted(sequences.items(), key=operator.itemgetter(1),reverse=True):
-    #         i = kvp[0]
-    #         opt = options[i]
-    #         new_pos = (x, i)
-    #         if isColumn: new_pos = (i, y)
-
-    #         remaining[new_pos[0]][new_pos[1]] = ''
-    #         seq, value = self._solve_step_shortest(remaining, buffer, new_pos[0], new_pos[1], not isColumn, depth+1)
-    #         remaining[new_pos[0]][new_pos[1]] = opt
-
-    #         if value > best_score:
-    #             best_score = value
-    #             best_sequence = seq
-    #             # if value >= self.max_value:
-    #             #     break
-
-
-    #     #print(depth, best_sequence, best_score)
-    #     return best_sequence, best_score
+    def _build_remaining_grid(self, original_grid, seq):
+        remaining = copy.deepcopy(original_grid)
+        for pos in seq:
+            remaining[pos[0]][pos[1]] = ''
+        return remaining
             
     def get_value(self, positions) -> float:
         '''Gets the value of a sequence based on the current targets'''
@@ -267,9 +164,12 @@ if __name__ == "__main__":
             ['1C', '55', '7A'],
             ['E9', '1C', '1C'],
             ['E9', '55', 'E9', 'E9']
-        ], 8)
-    # sequence, score = breach.solve()
-    breach.solve_v2()
+            # ['7A', '1C', '1C'],
+            # ['1C', 'E9', 'BD'],
+            # ['1C', '1C', '1C', '55']
+        ], 9)
+    sequence, score = breach.solve()
+    # sequence, score = breach.solve_v2()
     elapsed = time.perf_counter() - start
     print('Solution:', sequence, breach.positions_to_text(sequence), score, elapsed)
     print('{0} solutions, {1} tested'.format(breach.total_solutions, breach.total_tested))
