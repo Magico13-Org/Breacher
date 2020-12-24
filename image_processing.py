@@ -120,7 +120,7 @@ def extract_targets(img_thresh, code_images, img=None):
     for c in cnts: #this goes from bottom right to top left
         (x, y, w, h) = cv2.boundingRect(c)
         ratio = w/h
-        if ratio > 1 and ratio < 1.7 and w < 100 and w > 20: #must be roughly 1.5 aspect ratio and max of 100 pixels wide
+        if ratio > 1.1 and ratio < 1.7 and w < 100 and w > 20: #must be roughly 1.5 aspect ratio and max of 100 pixels wide
             if cur_y < 0 : cur_y = y
             if y < cur_y - 10:
                 #new row

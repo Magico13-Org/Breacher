@@ -21,10 +21,10 @@ class Breacher(object):
         self.max_value = 0
         self.total_tested = 0
         self.total_solutions = 0
-        self.open_sequences = []
+        self.open_sequences = {} # key is score, value is list of sequences with that score
 
     def load_sample_grid(self):
-        with open('examples/example4.csv') as f:
+        with open('examples/example.csv') as f:
             for line in f:
                 line = line.strip()
                 if line:
@@ -61,14 +61,13 @@ class Breacher(object):
 
         self.total_tested = 0
         self.total_solutions = 0
-        self.open_sequences = []
+        self.open_sequences = {}
 
         #start in the top row, alternate between rows/columns, build up the best scoring sequence (breadth first basically), to a depth equal to the buffer size
         #score goes up 0 if not a useful choice, 0.1 if it gets closer to completing a target, and 2^target position for completing a target
         buffer, score = self._solve_step(remaining_grid, buffer, 0, 0, False, 0, not shortest)
         if self.total_solutions == 0:
-            print('No valid solutions!')
-            return [], 0.0
+            print('No valid solutions! Returning best solution found.')
         return buffer, score
 
     def _solve_step(self, remaining, buffer, x, y, isColumn, depth, stop_on_first=False):
@@ -134,6 +133,44 @@ class Breacher(object):
 
         #print(depth, best_sequence, best_score)
         return best_sequence, best_score
+
+    def solve_v2(self):
+        buffer = []
+        score = 0.0
+        remaining_grid = copy.deepcopy(self.grid)
+        if self.buffer_size <= 0 or len(self.targets) == 0 or len(self.grid) == 0:
+            print('Inavlid setup')
+            return buffer, score
+
+        self.total_tested = 0
+        self.total_solutions = 0
+        self.open_sequences = {}
+        
+        found = False
+
+        while not found:
+            # pick the best scoring option from the list of open sequences
+            # check the new options and add them to the open list
+            # repeat until a solution is found
+            highest_score = 0 if not self.open_sequences else sorted(self.open_sequences.keys)[0]
+            seq = self.open_sequences.pop(highest_score, [])
+            if seq:
+                last = seq[:-1]
+            else:
+                last = (0,0)
+            options = self._build_options(remaining_grid, seq, last[0], last[1])
+            print(options)
+
+    def _build_options(self, remaining, buffer, x, y):
+        isColumn = (len(buffer) % 2) == 1
+        options = {}
+        if isColumn:
+            for xG in range(len(self.grid)):
+                options[xG] = remaining[xG][y]
+        else:
+            for yG in range(len(self.grid[0])):
+                options[yG] = remaining[x][yG]
+        return options
 
 
     # def _solve_step_shortest2(self, remaining, buffer, x, y, isColumn, depth):
@@ -227,12 +264,12 @@ if __name__ == "__main__":
     breach.load_sample_grid()
     breach.set_targets([
             #['BD', '1C'],
-            ['BD', 'BD'],
-            ['1C', '1C', 'BD'],
-            ['BD', 'BD', '1C', '55']
+            ['1C', '55', '7A'],
+            ['E9', '1C', '1C'],
+            ['E9', '55', 'E9', 'E9']
         ], 8)
-    sequence, score = breach.solve()
+    # sequence, score = breach.solve()
+    breach.solve_v2()
     elapsed = time.perf_counter() - start
     print('Solution:', sequence, breach.positions_to_text(sequence), score, elapsed)
-    print(breach.total_tested)
-    # optimal is 55 1C 1C BD BD 1C 55 (7 moves)
+    print('{0} solutions, {1} tested'.format(breach.total_solutions, breach.total_tested))
