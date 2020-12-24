@@ -49,7 +49,7 @@ class Breacher(object):
             self.target_strs.append(''.join(str(s) for s in tgt))
             self.max_value += pow(2, i)
 
-    def solve(self):
+    def solve(self, shortest=False):
         '''Using the provided grid and targets, returns the best sequence (first) and score (second)'''
         if self.buffer_size <= 0 or len(self.targets) == 0 or len(self.grid) == 0:
             print('Inavlid setup')
@@ -58,6 +58,7 @@ class Breacher(object):
         self.total_tested = 0
         self.total_solutions = 0
         self.open_sequences = {}
+        self.shortest_solution = self.buffer_size
         
         best_sequence = []
         best_score = 0.0
@@ -88,14 +89,18 @@ class Breacher(object):
                 if isColumn: new_pos = (i, last[1])
                 new_seq = seq + [new_pos]
                 score = self.get_value(new_seq)
+                new_seq_len = len(new_seq)
                 if score > best_score:
                     best_score = score
                     best_sequence = new_seq
                 if score >= self.max_value:
                     self.total_tested += 1
                     self.total_solutions += 1
-                    return new_seq, score
-                if len(new_seq) >= self.buffer_size:
+                    if shortest and new_seq_len < self.shortest_solution:
+                        self.shortest_solution = new_seq_len
+                    elif not shortest:
+                        return new_seq, score
+                if new_seq_len >= self.buffer_size or new_seq_len > self.shortest_solution: #we can short out if we have already found a shorter one
                     self.total_tested += 1
                     continue #if it didn't succeed then we're out of buffer space
                 if score in self.open_sequences: self.open_sequences[score].append(new_seq)
