@@ -259,6 +259,11 @@ def full_process(img, calculate_shortest=False, show_debug_markers=False):
 
     return seq, seq_txt
 
+def open_file(filename):
+    return cv2.imread(filename)
+
+def wait_for_keypress():
+    cv2.waitKey()
 
 if __name__ == "__main__":
     filename = 'examples/example1_6g_8b_1.4.png'
