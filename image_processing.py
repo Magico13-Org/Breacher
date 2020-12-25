@@ -2,6 +2,7 @@
 #builtin
 import math
 import time
+import base64
 
 #pip
 import cv2
@@ -294,6 +295,10 @@ def open_image(filename):
 
 def save_image(img, filename):
     cv2.imwrite(filename, img)
+
+def base64_encode_image(img, extension):
+    _, buffer = cv2.imencode(extension, img)
+    return base64.b64encode(buffer)
 
 def wait_for_keypress():
     cv2.waitKey()

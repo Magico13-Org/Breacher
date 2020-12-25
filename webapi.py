@@ -14,22 +14,10 @@ ALLOWED_EXTENSIONS = set(['.png', '.jpg', '.jpeg'])
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024 #16 megs
-# app.config['UPLOAD_FOLDER'] = 'images'
 
 @app.route('/')
-def hello_world():
-    return 'Hello, World!'
-
-@app.route('/img/<path:path>')
-def get_image(path):
-    file_path = os.path.join('images', path)
-    if os.path.dirname(file_path) != 'images': return 'Invalid path', 400
-    return_data = io.BytesIO()
-    with open(file_path, 'rb') as fo:
-        return_data.write(fo.read())
-    return_data.seek(0) #rewind
-    os.remove(file_path) #delete original
-    return send_file(return_data, attachment_filename=file_path)
+def healthcheck():
+    return 'Success', 200
 
 @app.route('/breach', methods = ['POST'])
 def breach():
@@ -64,8 +52,7 @@ def breach():
 
             img_cropped = img[grid_bounds[1]:grid_bounds[1]+grid_bounds[3], grid_bounds[0]:grid_bounds[0]+grid_bounds[2]]
 
-            cropped_name = str(uuid.uuid4()) + ext
-            image_processing.save_image(img_cropped, 'images/' + cropped_name)
+            base64_image = image_processing.base64_encode_image(img_cropped, '.jpg').decode()
 
             elapsed = time.perf_counter() - start
 
@@ -76,12 +63,13 @@ def breach():
                 'buffer_size': buffer,
                 'targets': targets,
                 'grid': grid,
-                'result_image': '/img/'+cropped_name,
+                'result_image': base64_image,
                 'elapsed': elapsed
             }
 
             return resp, 200
-        except:
+        except Exception as e:
+            print(e)
             return 'Error', 500
         finally:
             if filename and os.path.exists(filename):
