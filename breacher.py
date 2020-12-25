@@ -1,14 +1,5 @@
 import copy
-import operator
 import time
-from typing import Tuple
-
-class _sequence(object):
-    def __init__(self, sequence, score) -> None:
-        super().__init__()
-        self.sequence = sequence
-        self.score = score
-
 
 class Breacher(object):
     def __init__(self, grid=None, targets=None, buffer_size=0) -> None:

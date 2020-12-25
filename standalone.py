@@ -16,6 +16,6 @@ for arg in args:
     elif arg == 'shortest': shortest = True
 
 filename = args[1]
-img = image_processing.open_file(filename)
+img = image_processing.open_image(filename)
 seq, seq_t = image_processing.full_process(img, shortest, debug)
 image_processing.wait_for_keypress()

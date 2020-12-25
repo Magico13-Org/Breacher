@@ -202,7 +202,7 @@ def overlay_result(img, sequence, box_positions, color, offset_x=0, offset_y=0):
 
 
 def run_extraction(img, show_debug_markers=False):
-    '''Runs the extraction steps, returning the grid, targets list, buffer size, and grid box coords (for overlay)'''
+    '''Runs the extraction steps, returning the grid, targets list, buffer size, matrix region coords and matrix code positions (for overlay)'''
     code_images = build_source_codes()
 
     debug_image = None
@@ -215,7 +215,7 @@ def run_extraction(img, show_debug_markers=False):
     grid_box, grid_bounds = find_code_matrix(img_thresh, debug_image)
     if grid_box is None:
         print('Could not find grid...')
-        return None, None, None, None
+        return None, None, None, None, None
 
     targets = extract_targets(img_thresh, code_images, debug_image)
 
@@ -228,7 +228,7 @@ def run_extraction(img, show_debug_markers=False):
         for row in grid:
             print(' '.join(row))
 
-    return grid, targets, buffer_size, boxes
+    return grid, targets, buffer_size, grid_bounds, boxes
     
 
 def full_process(img, calculate_shortest=False, show_debug_markers=False):
@@ -289,8 +289,11 @@ def full_process(img, calculate_shortest=False, show_debug_markers=False):
 
     return seq, seq_txt
 
-def open_file(filename):
+def open_image(filename):
     return cv2.imread(filename)
+
+def save_image(img, filename):
+    cv2.imwrite(filename, img)
 
 def wait_for_keypress():
     cv2.waitKey()
