@@ -201,6 +201,36 @@ def overlay_result(img, sequence, box_positions, color, offset_x=0, offset_y=0):
         cv2.arrowedLine(img, first, second, color, 2)
 
 
+def run_extraction(img, show_debug_markers=False):
+    '''Runs the extraction steps, returning the grid, targets list, buffer size, and grid box coords (for overlay)'''
+    code_images = build_source_codes()
+
+    debug_image = None
+    if show_debug_markers: 
+        debug_image = img
+
+    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img_thresh = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+
+    grid_box, grid_bounds = find_code_matrix(img_thresh, debug_image)
+    if grid_box is None:
+        print('Could not find grid...')
+        return None, None, None, None
+
+    targets = extract_targets(img_thresh, code_images, debug_image)
+
+    buffer_bounds = find_buffer_region(img_thresh, debug_image)
+    buffer_size = extract_buffer(img_gray, buffer_bounds, debug_image)
+    print('Buffer is size {0}'.format(buffer_size))
+    
+    grid, boxes = extract_grid(grid_box, grid_bounds, code_images, debug_image)
+    if grid is not None:
+        for row in grid:
+            print(' '.join(row))
+
+    return grid, targets, buffer_size, boxes
+    
+
 def full_process(img, calculate_shortest=False, show_debug_markers=False):
     timer_overall = time.perf_counter()
 

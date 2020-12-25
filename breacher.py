@@ -11,7 +11,7 @@ class _sequence(object):
 
 
 class Breacher(object):
-    def __init__(self) -> None:
+    def __init__(self, grid=None, targets=None, buffer_size=0) -> None:
         super().__init__()
         self.grid = []
         self.targets = []
@@ -22,6 +22,8 @@ class Breacher(object):
         self.total_tested = 0
         self.total_solutions = 0
         self.open_sequences = {} # key is score, value is list of sequences with that score
+        if grid: self.set_grid(grid)
+        if targets and buffer_size: self.set_targets(targets, buffer_size)
 
     def load_sample_grid(self):
         with open('examples/example.csv') as f:
