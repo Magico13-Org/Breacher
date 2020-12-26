@@ -1,0 +1,26 @@
+﻿@page
+@model IndexModel
+@{
+    ViewData["Title"] = "Home page";
+}
+
+<div class="text-center">
+    <h1 class="display-4">Welcome</h1>
+    <form enctype="multipart/form-data" method="post">
+        <dl>
+            <dt>
+                <label asp-for="FormFile"></label>
+            </dt>
+            <dd>
+                <input asp-for="FormFile" type="file">
+                <span asp-validation-for="FormFile"></span>
+            </dd>
+        </dl>
+        <input asp-page-handler="Upload" class="btn" type="submit" value="Upload" />
+    </form>
+    @if (Model.BreachData != null)
+    {
+        <p>@Html.Raw(Model.Sequence)</p>
+        <img src="data:image/jpg;base64, @Model.BreachData.ResultImage" alt="Output Image" />
+    }
+</div>

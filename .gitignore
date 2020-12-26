@@ -16,6 +16,7 @@ eggs/
 .eggs/
 lib/
 lib64/
+!**/wwwroot/lib/
 parts/
 sdist/
 var/
@@ -131,3 +132,7 @@ dmypy.json
 __pycache__
 examples/
 numbers/
+
+bin/
+obj/
+.vs/
