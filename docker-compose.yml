@@ -1,0 +1,12 @@
+version: "3.9"  # optional since v1.27.0
+services:
+  frontend:
+    build: Frontend
+    ports:
+      - "8003:80"
+    links:
+      - backend
+  backend:
+    build: Backend
+    # ports:
+    #   - "8083:5000"

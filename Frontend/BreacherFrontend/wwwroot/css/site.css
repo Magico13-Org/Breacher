@@ -61,7 +61,19 @@ html {
 body {
   /* Margin bottom by footer height */
   margin-bottom: 60px;
+  background-color: #120f18;
+  color: #ceec57
 }
+
+hr {
+  color: #292d3a;
+  background-color: #292d3a;
+}
+
+.btn {
+  color: #ceec57;
+}
+
 .footer {
   position: absolute;
   bottom: 0;
