@@ -3,7 +3,7 @@ services:
   frontend:
     build: Frontend
     ports:
-      - "8003:80"
+      - "8000:80"
     restart: unless-stopped
     links:
       - backend
