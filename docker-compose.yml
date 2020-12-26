@@ -4,9 +4,11 @@ services:
     build: Frontend
     ports:
       - "8003:80"
+    restart: unless-stopped
     links:
       - backend
   backend:
     build: Backend
+    restart: unless-stopped
     # ports:
     #   - "8083:5000"
