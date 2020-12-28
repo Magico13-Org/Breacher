@@ -3,10 +3,12 @@
 import math
 import time
 import base64
+import os
 
 #pip
 import cv2
 import imutils
+import numpy
 from skimage.metrics import structural_similarity
 
 #ours
@@ -18,7 +20,10 @@ def build_source_codes():
     codes = ['1C', '7A', '55', 'BD', 'E9']
 
     for code in codes:
-        im = cv2.imread('codes/{0}.png'.format(code), cv2.IMREAD_UNCHANGED)
+        fp = 'codes/{0}.png'.format(code)
+        if not os.path.exists(fp):
+            fp = 'Backend/' + fp
+        im = cv2.imread(fp, cv2.IMREAD_UNCHANGED)
         images[code] = im
     
     return images
@@ -82,8 +87,8 @@ def extract_grid(grid_box, grid_bounds, code_images, img=None):
         text = determine_code(region, code_images)
 
         grid_raw.append(text)
-        x += grid_bounds[0]
-        y += grid_bounds[1]
+        # x += grid_bounds[0]
+        # y += grid_bounds[1]
         grid_boxes.append((x, y, w, h)) #in original image coordinates, not roi coords
         if img is not None:
             cv2.rectangle(img, (x-pad, y-pad), (x+w+pad, y+h+pad), (255, 255, 0), 2) #display a box around it
@@ -190,15 +195,15 @@ def extract_buffer(img_gray, buffer_bounds, img=None):
     buffer_size = math.ceil(verticals / 2) #two verticals per buffer block
     return buffer_size
 
-def overlay_result(img, sequence, box_positions, color, offset_x=0, offset_y=0):
+def overlay_result(img, sequence, box_positions, color, grid_bounds=(0,0,0,0), offset_x=0, offset_y=0):
     '''Draws lines on the original image showing the solved pattern'''
     for i in range(len(sequence) - 1):
         # draw line between this point and the next point
         first_seq = box_positions[sequence[i][0]][sequence[i][1]]
-        first = (first_seq[0] + int(first_seq[2]/2) + offset_x, first_seq[1] + int(first_seq[3]/2) + offset_y)
+        first = (first_seq[0] + int(first_seq[2]/2) + offset_x + grid_bounds[0], first_seq[1] + int(first_seq[3]/2) + offset_y + grid_bounds[1])
 
         second_seq = box_positions[sequence[i+1][0]][sequence[i+1][1]]
-        second = (second_seq[0] + int(second_seq[2]/2) + offset_x, second_seq[1] + int(second_seq[3]/2) + offset_y)
+        second = (second_seq[0] + int(second_seq[2]/2) + offset_x + grid_bounds[0], second_seq[1] + int(second_seq[3]/2) + offset_y + grid_bounds[1])
         cv2.arrowedLine(img, first, second, color, 2)
 
 
@@ -271,7 +276,7 @@ def full_process(img, calculate_shortest=False, show_debug_markers=False):
     seq, score = breach.solve(shortest=calculate_shortest)
     seq_txt = breach.positions_to_text(seq)
     #overlay pattern on original image
-    overlay_result(img, seq, boxes, (0, 255, 255))
+    overlay_result(img, seq, boxes, (0, 255, 255), grid_bounds)
     print('Solution:', seq, seq_txt, score)
     print('Examined {0} possibilities with {1} valid solutions found.'.format(breach.total_tested, breach.total_solutions))
 
@@ -297,8 +302,14 @@ def save_image(img, filename):
     cv2.imwrite(filename, img)
 
 def base64_encode_image(img, extension):
+    '''Base64 encodes the image to a byte-string'''
     _, buffer = cv2.imencode(extension, img)
     return base64.b64encode(buffer)
+
+def base64_decode_image(base64Bytes):
+    '''Takes a base64 encoded image as a byte-string and converts to an OpenCV image'''
+    img = numpy.fromstring(base64.b64decode(base64Bytes), numpy.uint8)
+    return cv2.imdecode(img, flags=cv2.IMREAD_COLOR)
 
 def wait_for_keypress():
     cv2.waitKey()

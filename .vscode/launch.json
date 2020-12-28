@@ -17,7 +17,7 @@
             "request": "launch",
             "module": "flask",
             "env": {
-                "FLASK_APP": "webapi",
+                "FLASK_APP": "Backend/webapi",
                 "FLASK_ENV": "development",
                 "FLASK_DEBUG": "0"
             },
