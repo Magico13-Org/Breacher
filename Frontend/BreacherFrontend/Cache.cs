@@ -3,11 +3,11 @@ using System.Collections.Generic;
 
 namespace BreacherFrontend
 {
-    public class BreachCache
+    public class ResponseCache
     {
-        private Dictionary<string, BreachResponse> _cache = new Dictionary<string, BreachResponse>();
+        private Dictionary<string, ResponseBase> _cache = new Dictionary<string, ResponseBase>();
 
-        public string StoreBreachResponse(BreachResponse toStore)
+        public string StoreResponse(ResponseBase toStore)
         {
             string key = Guid.NewGuid().ToString();
 
@@ -15,11 +15,12 @@ namespace BreacherFrontend
             return key;
         }
 
-        public BreachResponse GetBreachResponse(string key, bool remove=false)
+        public T GetResponse<T>(string key, bool remove=false) where T: ResponseBase
         {
-            BreachResponse response = null;
-            if (_cache.TryGetValue(key, out response))
+            T response = null;
+            if (_cache.TryGetValue(key, out ResponseBase responseBase))
             {
+                response = responseBase as T;
                 if (remove)
                 {
                     _cache.Remove(key);

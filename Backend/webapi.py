@@ -76,7 +76,7 @@ def breach():
     try:
         start = time.perf_counter()
 
-        if 'matrix_image' in data:
+        if 'matrix_image' in data and data['matrix_image']:
             img = image_processing.base64_decode_image(data['matrix_image'])
 
         grid = data['grid']
@@ -95,7 +95,7 @@ def breach():
         }
 
         if img is not None:
-            filename = str(uuid.uuid4())
+            # filename = str(uuid.uuid4())
             # image_processing.save_image(img, filename + '.jpg')
             image_processing.overlay_result(img, seq, boxes, (255, 255, 0))
             # image_processing.save_image(img, filename + '_solution.jpg')

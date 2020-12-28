@@ -12,24 +12,47 @@
                 <label>Upload Screenshot</label>
             </dt>
             <dd>
-                <input asp-for="FormFile" type="file">
+                <input asp-for="FormFile" type="file" />
                 <span asp-validation-for="FormFile"></span>
             </dd>
+            <dt>
+                <label>Buffer size:</label>
+            </dt>
+            <dd>
+                <input type="number" asp-for="BufferSize" />
+            </dd>
+            <dt>
+                <label>Target Sequences:</label>
+            </dt>
+            <dd>
+                <textarea rows="@Model.TargetCount" asp-for="Targets"></textarea>
+            </dd>
+            <dt>
+                <label>Code Matrix:</label>
+            </dt>
+            <dd>
+                <textarea rows="@Model.GridSize" asp-for="Grid"></textarea>
+            </dd>
+            <dd>
+                <input asp-for="ExtractedImage" />
+                <input asp-for="GridBoxes" />
+            </dd>
         </dl>
-        <input asp-page-handler="Upload" class="btn" type="submit" value="Solve" />
+        
+        <input asp-page-handler="Solve" class="btn" type="submit" value="Solve" />
     </form>
+
     @if (Model.BreachData != null)
     {
         <hr />
         <p>
-            Target Sequences:<br />
-            @Html.Raw(Model.Targets)
+            Found Sequence: @Html.Raw(Model.Sequence) <br />
+            Positions: @Html.Raw(Model.SequencePositions) <br />
+            Score: @Html.Raw(Model.BreachData.Score)
         </p>
-        <p>Buffer size: @Html.Raw(Model.BreachData.BufferSize)</p>
-        <p>Found Sequence: @Html.Raw(Model.Sequence)</p>
-        <img src="data:image/jpg;base64, @Model.BreachData.ResultImage" alt="Output Image" />
-
-
-
+        @if (!string.IsNullOrEmpty(Model.BreachData.SolutionImage))
+        {
+            <img src="data:image/jpg;base64, @Model.BreachData.SolutionImage" alt="Output Image" />
+        }
     }
 </div>

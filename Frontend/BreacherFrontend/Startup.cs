@@ -25,7 +25,7 @@ namespace BreacherFrontend
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddHttpClient();
-            services.AddSingleton<BreachCache>();
+            services.AddSingleton<ResponseCache>();
             services.AddRazorPages();
         }
 
