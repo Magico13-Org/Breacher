@@ -91,7 +91,9 @@ def extract_grid(grid_box, grid_bounds, code_images, img=None):
         # y += grid_bounds[1]
         grid_boxes.append((x, y, w, h)) #in original image coordinates, not roi coords
         if img is not None:
-            cv2.rectangle(img, (x-pad, y-pad), (x+w+pad, y+h+pad), (255, 255, 0), 2) #display a box around it
+            x2 = x + grid_bounds[0]
+            y2 = y + grid_bounds[1]
+            cv2.rectangle(img, (x2-pad, y2-pad), (x2+w+pad, y2+h+pad), (255, 255, 0), 2) #display a box around it
     grid_raw.reverse()
     grid_boxes.reverse()
     
@@ -118,7 +120,7 @@ def extract_targets(img_thresh, code_images, img=None):
     
     roi_bounds = [(int(img_thresh.shape[1]*0.4), (int(img_thresh.shape[1]*0.65))), (int(img_thresh.shape[0]*0.3), int(img_thresh.shape[0]*0.75))] # this is in width, height
     roi = img_thresh[roi_bounds[1][0]:roi_bounds[1][1], roi_bounds[0][0]:roi_bounds[0][1]]
-    roi_closed = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (13,13)));
+    roi_closed = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9,9)))
     cnts = cv2.findContours(roi_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
     current_row = []
@@ -315,7 +317,7 @@ def wait_for_keypress():
     cv2.waitKey()
 
 if __name__ == "__main__":
-    filename = 'examples/example1_6g_8b_1.4.png'
+    # filename = 'examples/example1_6g_8b_1.4.png'
     # filename = 'examples/example2_5g_8b_1.3.png'
     # filename = 'examples/example3_6g_8b_3.4.png'
     # filename = 'examples/example4_6g_8b_3.4.png'
@@ -323,14 +325,15 @@ if __name__ == "__main__":
     # filename = 'examples/example6_1440.png'
     # filename = 'examples/example7.png'
     # filename = 'examples/example11.png'
+    filename = 'examples/example12_firstcomplete.png'
     
     img = cv2.imread(filename)
-    sequence, text = full_process(img, calculate_shortest=False, show_debug_markers=False)
+    sequence, text = full_process(img, calculate_shortest=False, show_debug_markers=True)
 
     # matrix_roi = img[grid_bounds[1]:grid_bounds[1]+grid_bounds[3], 
     #                     grid_bounds[0]:grid_bounds[0]+grid_bounds[2]]
     # cv2.imshow('matrix_final', matrix_roi)
-    # cv2.imshow('img', img)
+    cv2.imshow('img', img)
     # cv2.imshow('img_gray', img_gray)
     # cv2.imshow('img_thresh', img_thresh)
     # cv2.imshow('img_left', left_half)
