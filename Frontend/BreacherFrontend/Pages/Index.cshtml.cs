@@ -118,12 +118,12 @@ namespace BreacherFrontend.Pages
                     List<List<string>> targets = new List<List<string>>();
                     List<List<string>> grid = new List<List<string>>();
 
-                    foreach (string line in Targets.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                    foreach (string line in Targets.ToUpper().Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                     {
                         targets.Add(line.Split().ToList());
                     }
 
-                    foreach (string line in Grid.Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+                    foreach (string line in Grid.ToUpper().Split(new char[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
                     {
                         grid.Add(line.Split().ToList());
                     }

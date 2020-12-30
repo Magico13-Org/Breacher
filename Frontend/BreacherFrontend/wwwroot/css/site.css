@@ -70,6 +70,16 @@ hr {
   background-color: #292d3a;
 }
 
+textarea {
+    color: #ceec57;
+    background-color: #120f18;
+}
+
+input, input[style="number"] {
+    color: #ceec57;
+    background-color: #120f18;
+}
+
 .btn {
   color: #ceec57;
 }
