@@ -120,7 +120,7 @@ def extract_targets(img_thresh, code_images, img=None):
     
     roi_bounds = [(int(img_thresh.shape[1]*0.4), (int(img_thresh.shape[1]*0.65))), (int(img_thresh.shape[0]*0.3), int(img_thresh.shape[0]*0.75))] # this is in width, height
     roi = img_thresh[roi_bounds[1][0]:roi_bounds[1][1], roi_bounds[0][0]:roi_bounds[0][1]]
-    roi_closed = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (9,9)))
+    roi_closed = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7)))
     cnts = cv2.findContours(roi_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
     current_row = []
@@ -325,7 +325,8 @@ if __name__ == "__main__":
     # filename = 'examples/example6_1440.png'
     # filename = 'examples/example7.png'
     # filename = 'examples/example11.png'
-    filename = 'examples/example12_firstcomplete.png'
+    # filename = 'examples/example12_firstcomplete.png'
+    filename = 'examples/example13_jpg.jpg'
     
     img = cv2.imread(filename)
     sequence, text = full_process(img, calculate_shortest=False, show_debug_markers=True)
