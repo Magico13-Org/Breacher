@@ -116,4 +116,4 @@ def breach():
 
 def allowed_file(filename):
     _, ext = os.path.splitext(filename)
-    return ext in ALLOWED_EXTENSIONS
+    return ext.lower() in ALLOWED_EXTENSIONS
