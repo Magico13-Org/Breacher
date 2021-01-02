@@ -130,7 +130,7 @@ def extract_targets(img_thresh, code_images, img=None):
     if img_thresh.shape[1] > 1600: closing_size = 7 #1600x900
     if img_thresh.shape[1] > 1920: closing_size = 9 #1920x1080
     roi_closed = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (closing_size, closing_size)))
-    cv2.imshow('roi', roi_closed)
+    # cv2.imshow('roi', roi_closed)
     cnts = cv2.findContours(roi_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
     current_row = []
