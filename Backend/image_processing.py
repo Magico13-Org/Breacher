@@ -17,7 +17,7 @@ from breacher import Breacher
 def build_source_codes():
     '''Reads in the code images for later compariosn'''
     images = {} # clear it out just in case
-    codes = ['1C', '7A', '55', 'BD', 'E9']
+    codes = ['1C', '7A', '55', 'BD', 'E9', 'FF']
 
     for code in codes:
         fp = 'codes/{0}.png'.format(code)
@@ -46,9 +46,9 @@ def determine_code(region, code_images, extra_pad = 0):
 
 def find_code_matrix(img_thresh, img=None):
     '''Finds the code matrix in the image, returns the roi and its bounds (x,y,w,h) within the source image'''
-    roi_1_bounds = [(0, int(img_thresh.shape[1]/2)), (0, int(img_thresh.shape[0]*0.75))] # this is in width, height
+    roi_1_bounds = [(0, int(img_thresh.shape[1]/2)), (int(img_thresh.shape[0]*0.25), int(img_thresh.shape[0]*0.9))] # this is in width, height
     left_half = img_thresh[roi_1_bounds[1][0]:roi_1_bounds[1][1], roi_1_bounds[0][0]:roi_1_bounds[0][1]]
-
+    # cv2.imshow('img_left', left_half)
     grid_box = None
     bounds = (0, 0, 0, 0)
 
@@ -59,7 +59,7 @@ def find_code_matrix(img_thresh, img=None):
         ratio = w/h
         x += roi_1_bounds[0][0]
         y += roi_1_bounds[1][0]
-        if ratio > 1.3 and ratio < 1.5 and w > 400 and h > 300: #must be roughly 1.4 aspect ratio and minimum of 300 pixels
+        if ratio > 1.1 and ratio < 1.5 and w > 400 and h > 300: #must be roughly 1.4 aspect ratio and minimum of 300 pixels
             bounds = (x+10, y+int(h/8), w-20, h-10-int(h/8))
             grid_box = img_thresh[bounds[1]:bounds[1]+bounds[3], bounds[0]:bounds[0]+bounds[2]]
             if img is not None:
@@ -79,21 +79,25 @@ def extract_grid(grid_box, grid_bounds, code_images, img=None):
     grid_boxes = []
     for c in cnts: #starts in bottom right, goes right to left
         (x, y, w, h) = cv2.boundingRect(c)
-        # grab the number region, pad it, compare it
-        region = grid_box[y-pad:y+h+pad, x-pad:x+w+pad]
-        region = cv2.bitwise_not(region)
-        if region is None: continue
+        ratio = w/h
+        if ratio > 1.0 and ratio < 1.7 and h > 15:
+            # grab the number region, pad it, compare it
+            region = grid_box[y-pad:y+h+pad, x-pad:x+w+pad]
+            region = cv2.bitwise_not(region)
+            if region is None: continue
 
-        text = determine_code(region, code_images)
+            #for any new codes
+            # cv2.imwrite(f'numbers/{x}{y}.png', region)
+            text = determine_code(region, code_images)
 
-        grid_raw.append(text)
-        # x += grid_bounds[0]
-        # y += grid_bounds[1]
-        grid_boxes.append((x, y, w, h)) #in original image coordinates, not roi coords
-        if img is not None:
-            x2 = x + grid_bounds[0]
-            y2 = y + grid_bounds[1]
-            cv2.rectangle(img, (x2-pad, y2-pad), (x2+w+pad, y2+h+pad), (255, 255, 0), 2) #display a box around it
+            grid_raw.append(text)
+            # x += grid_bounds[0]
+            # y += grid_bounds[1]
+            grid_boxes.append((x, y, w, h)) #in original image coordinates, not roi coords
+            if img is not None:
+                x2 = x + grid_bounds[0]
+                y2 = y + grid_bounds[1]
+                cv2.rectangle(img, (x2-pad, y2-pad), (x2+w+pad, y2+h+pad), (255, 255, 0), 2) #display a box around it
     grid_raw.reverse()
     grid_boxes.reverse()
     
@@ -120,7 +124,13 @@ def extract_targets(img_thresh, code_images, img=None):
     
     roi_bounds = [(int(img_thresh.shape[1]*0.4), (int(img_thresh.shape[1]*0.65))), (int(img_thresh.shape[0]*0.3), int(img_thresh.shape[0]*0.75))] # this is in width, height
     roi = img_thresh[roi_bounds[1][0]:roi_bounds[1][1], roi_bounds[0][0]:roi_bounds[0][1]]
-    roi_closed = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7,7)))
+    # cv2.imshow('roi', roi)
+
+    closing_size = 5
+    if img_thresh.shape[1] > 1600: closing_size = 7 #1600x900
+    if img_thresh.shape[1] > 1920: closing_size = 9 #1920x1080
+    roi_closed = cv2.morphologyEx(roi, cv2.MORPH_CLOSE, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (closing_size, closing_size)))
+    cv2.imshow('roi', roi_closed)
     cnts = cv2.findContours(roi_closed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     cnts = imutils.grab_contours(cnts)
     current_row = []
@@ -128,7 +138,7 @@ def extract_targets(img_thresh, code_images, img=None):
     for c in cnts: #this goes from bottom right to top left
         (x, y, w, h) = cv2.boundingRect(c)
         ratio = w/h
-        if ratio > 1.1 and ratio < 1.7 and w < 100 and w > 20: #must be roughly 1.5 aspect ratio and max of 100 pixels wide
+        if ratio > 1.1 and ratio < 1.7 and w < 100 and w > 10: #must be roughly 1.5 aspect ratio and max of 100 pixels wide
             if cur_y < 0 : cur_y = y
             if y < cur_y - 10:
                 #new row
@@ -250,6 +260,7 @@ def full_process(img, calculate_shortest=False, show_debug_markers=False):
 
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_thresh = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+    # cv2.imshow('img_thresh', img_thresh)
 
     grid_box, grid_bounds = find_code_matrix(img_thresh, debug_image)
     if grid_box is None:
@@ -326,7 +337,8 @@ if __name__ == "__main__":
     # filename = 'examples/example7.png'
     # filename = 'examples/example11.png'
     # filename = 'examples/example12_firstcomplete.png'
-    filename = 'examples/example13_jpg.jpg'
+    # filename = 'examples/example13_jpg.jpg'
+    filename = 'examples/example14_7g_900.png'
     
     img = cv2.imread(filename)
     sequence, text = full_process(img, calculate_shortest=False, show_debug_markers=True)
