@@ -2,8 +2,6 @@ FROM python:3.9
 
 EXPOSE 5000
 
-RUN apt-get update && apt-get install -y python-opencv
-
 COPY ./requirements_web.txt /app/requirements.txt
 
 WORKDIR /app
