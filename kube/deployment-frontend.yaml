@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: breacher-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: breacher-frontend
+      tier: frontend
+  template:
+    metadata:
+      labels:
+        app: breacher-frontend
+        tier: frontend
+    spec:
+      containers:
+      - name: breacher-frontend
+        image: magico13/breacher-frontend
+        ports:
+          - containerPort: 80

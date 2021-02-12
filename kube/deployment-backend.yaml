@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: breacher-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: breacher-backend
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: breacher-backend
+        tier: backend
+    spec:
+      containers:
+      - name: breacher-backend
+        image: magico13/breacher-backend
+        ports:
+          - containerPort: 5000

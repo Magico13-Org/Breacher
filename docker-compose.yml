@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     links:
       - backend
-  backend:
+  breacher-backend:
     build: Backend
     restart: unless-stopped
     # ports:
