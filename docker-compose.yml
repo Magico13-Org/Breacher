@@ -6,7 +6,7 @@ services:
       - "8000:80"
     restart: unless-stopped
     links:
-      - backend
+      - breacher-backend
   breacher-backend:
     build: Backend
     restart: unless-stopped
